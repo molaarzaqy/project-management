@@ -40,13 +40,13 @@ func Setup(
 	userGroup.Put("/:id", uc.UpdateUser)
 	userGroup.Delete("/:id", uc.DeleteUser)
 	// board
-	boarGroup := api.Group("/boards")
-	boarGroup.Post("/", bc.CreateBoard)
-	boarGroup.Put("/:id", bc.UpdateBoard)
-	boarGroup.Post("/:id/members", bc.AddBoardMembers)
-	boarGroup.Delete("/:id/members", bc.RemoveBoardMembers)
-	boarGroup.Get("/my", bc.GetMyBoardPaginate)
-	boarGroup.Get("/:board_id/lists",lc.GetListOnBoard)
+	boardGroup := api.Group("/boards")
+	boardGroup.Get("/my", bc.GetMyBoardPaginate)
+	boardGroup.Post("/", bc.CreateBoard)
+	boardGroup.Post("/:id/members", bc.AddBoardMembers)
+	boardGroup.Delete("/:id/members", bc.RemoveBoardMembers)
+	boardGroup.Put("/:id", bc.UpdateBoard)
+	boardGroup.Get("/:board_id/lists",lc.GetListOnBoard)
 	// list
 	listGroup := api.Group("/lists")
 	listGroup.Post("/", lc.CreateList)
@@ -58,4 +58,8 @@ func Setup(
 	cardGroup.Put("/:id", cc.UpdateCard)
 	cardGroup.Delete("/:id", cc.DeleteCard)
 	cardGroup.Get("/:id", cc.GetCardDetail)
+
+	// cardGroup.Post(":id/attachments", cc.UploadAttachment)
+	// cardGroup.Get(":id/attachments", cc.GetAttachments)
+	// cardGroup.Delete("/:card_id/attachments/:attachment_id", cc.DeleteAttachment)
 }

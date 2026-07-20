@@ -124,7 +124,7 @@ func (s *cardService) Update(card *models.Card, listPublicID string) error {
 		// hapus dari list lama
 		var oldPos models.CardPosition
 		if err := tx.Where("list_internal_id = ?", existingCard.ListID).
-				  First(oldPos).Error; err != nil {
+				  First(&oldPos).Error; err != nil {
 					filtered := make(types.UUIDArray,0,len(oldPos.CardOrder))
 					for _, id := range oldPos.CardOrder {
 						if id != existingCard.PublicID {
