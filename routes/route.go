@@ -47,6 +47,7 @@ func Setup(
 	boardGroup.Delete("/:id/members", bc.RemoveBoardMembers)
 	boardGroup.Put("/:id", bc.UpdateBoard)
 	boardGroup.Get("/:board_id/lists",lc.GetListOnBoard)
+	boardGroup.Put("/:board_id/positions", lc.UpdateListPosition)
 	// list
 	listGroup := api.Group("/lists")
 	listGroup.Post("/", lc.CreateList)
