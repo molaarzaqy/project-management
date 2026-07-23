@@ -48,11 +48,15 @@ func Setup(
 	boardGroup.Put("/:id", bc.UpdateBoard)
 	boardGroup.Get("/:board_id/lists",lc.GetListOnBoard)
 	boardGroup.Put("/:board_id/positions", lc.UpdateListPosition)
+	boardGroup.Get("/:id", bc.GetDetail)
+	boardGroup.Get("/:id/members", bc.GetBoardMembers)
 	// list
 	listGroup := api.Group("/lists")
 	listGroup.Post("/", lc.CreateList)
 	listGroup.Put("/:id", lc.UpdateList)
 	listGroup.Delete("/:id", lc.DeleteList)
+	listGroup.Get("/:id/cards", cc.GetCardsByList)
+	listGroup.Put("/:list_id/positions", lc.UpdateCardPosition)
 	// card
 	cardGroup := api.Group("/cards")
 	cardGroup.Post("/", cc.CreateCard)

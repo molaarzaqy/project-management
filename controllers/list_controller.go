@@ -109,3 +109,28 @@ func (c *ListController) UpdateListPosition(ctx *fiber.Ctx) error {
 	}
 	return utils.Success(ctx, "success to update list position", nil)
 }
+
+func (c *ListController) UpdateCardPosition(ctx *fiber.Ctx) error {
+	listID := ctx.Params("list_id")
+	if _, err := uuid.Parse(listID); err != nil {
+		return utils.BadRequest(ctx, "id is not valid", err.Error())
+	}
+	var payload struct {
+		Positions []string `json:"positions"`
+	}
+	if err := ctx.BodyParser(&payload); err != nil {
+		return utils.BadRequest(ctx, "invalid request body", err.Error())
+	}
+	var positionUUID []uuid.UUID
+	for _, s := range payload.Positions {
+		u, err := uuid.Parse(s)
+		if err != nil {
+			return utils.BadRequest(ctx, "invalid position format", err.Error())
+		}
+		positionUUID = append(positionUUID, u)
+	}
+	if err := c.service.UpdateCardPositions(listID, positionUUID); err != nil {
+		return utils.InternalServerError(ctx, "failed to update card positions", err.Error())
+	}
+	return utils.Success(ctx, "Posisi card berhasil diperbarui", nil)
+}

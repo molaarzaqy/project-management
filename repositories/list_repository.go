@@ -3,6 +3,7 @@ package repositories
 import (
 	"github.com/MaulanaBarzaqi/project-management/config"
 	"github.com/MaulanaBarzaqi/project-management/models"
+	"github.com/MaulanaBarzaqi/project-management/models/types"
 	"github.com/google/uuid"
 )
 
@@ -12,6 +13,7 @@ type ListRepository interface {
 	Delete(id uint) error
 	UpdatePosition(boardPublicID string, position []string) error
 	GetCardPosition(listPublicID string) ([]uuid.UUID, error)
+	UpdateCardOrder(listInternalID int64, cardOrder types.UUIDArray) error
 	FindByBoardID(boardID string) ([]models.List, error)
 	FindByPublicID(publicID string) (*models.List, error)
 	FindByID(id uint) (*models.List, error)
@@ -50,6 +52,12 @@ func (r *listRepository) GetCardPosition(listPublicID string) ([]uuid.UUID, erro
 	err := config.DB.Joins("JOIN lists ON list.internal_id = card_positions.list_internal_id").
 	Where("list.public_id = ?", listPublicID).Error
 	return position.CardOrder, err
+}
+
+func (r *listRepository) UpdateCardOrder(listInternalID int64, cardOrder types.UUIDArray) error {
+	return config.DB.Model(&models.CardPosition{}).
+	Where("list_internal_id = ?", listInternalID).
+	Update("card_order", cardOrder).Error
 }
 
 func (r *listRepository) FindByBoardID(boardID string) ([]models.List, error) {

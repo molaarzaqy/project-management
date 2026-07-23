@@ -15,6 +15,7 @@ type BoardService interface {
 	AddMembers(boardPublicID string, userPublicIDS []string) error
 	RemoveMembers(boardPublicID string, userPublicIDs []string) error
 	GetAllByUserPaginate(userID, filter, sort string, limit, offset int) ([]models.Board, int64, error)
+	GetMembers(boardPublicID string) ([]models.User, error)
 }
 
 type boardService struct {
@@ -118,4 +119,15 @@ func (s *boardService) RemoveMembers(boardPublicID string, userPublicIDs []strin
 
 func (s *boardService) GetAllByUserPaginate(userID, filter, sort string, limit, offset int) ([]models.Board, int64, error) {
 	return s.boardRepo.FindAllUserPaginate(userID, filter, sort, limit, offset)
+}
+
+func (s *boardService) GetMembers(boardPublicID string) ([]models.User, error) {
+    // Validasi apakah board ada
+    _, err := s.boardRepo.FindByPublicID(boardPublicID)
+    if err != nil {
+        return nil, errors.New("board not found")
+    }
+
+    // Ambil data user yang menjadi member melalui repository
+    return s.boardMemberRepo.GetMembers(boardPublicID)
 }

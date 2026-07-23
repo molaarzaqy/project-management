@@ -104,3 +104,18 @@ func (c *CardController) GetCardDetail(ctx *fiber.Ctx) error {
 	}
 	return utils.Success(ctx, "success to fetch card", card)
 }
+
+func (c *CardController) GetCardsByList(ctx *fiber.Ctx) error {
+    listPublicID := ctx.Params("id")
+    if _, err := uuid.Parse(listPublicID); err != nil {
+        return utils.BadRequest(ctx, "id not valid", err.Error())
+    }
+    
+    // Pastikan service card Anda memiliki method untuk mencari berdasarkan list ID (misal: GetByListID)
+    cards, err := c.services.GetByListID(listPublicID)
+    if err != nil {
+        return utils.InternalServerError(ctx, "failed to fetch cards", err.Error())
+    }
+    
+    return utils.Success(ctx, "success to fetch cards", cards)
+}

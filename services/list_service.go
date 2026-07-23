@@ -21,6 +21,7 @@ type ListService interface {
 	Update(list *models.List) error
 	Delete(id uint) error
 	UpdatePositions(boardPublicID string, positions []uuid.UUID) error
+	UpdateCardPositions(listPublicID string, positions []uuid.UUID) error
 }
 
 type ListWithOrder struct {
@@ -157,4 +158,13 @@ func (s *listService) UpdatePositions(boardPublicID string, positions []uuid.UUI
 	// update list order
 	position.ListOrder = positions
 	return s.listPosRepo.UpdateListOrder(position)
+}
+
+func (s *listService) UpdateCardPositions(listPublicID string, positions []uuid.UUID) error {
+	list, err := s.listRepo.FindByPublicID(listPublicID)
+	if err != nil {
+		return errors.New("list not found")
+	}
+	cardOrder := types.UUIDArray(positions)
+	return s.listRepo.UpdateCardOrder(int64(list.InternalID), cardOrder)
 }

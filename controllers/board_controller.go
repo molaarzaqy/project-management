@@ -123,3 +123,25 @@ func (c *BoardController) GetMyBoardPaginate(ctx *fiber.Ctx) error {
 	}
 	return utils.SuccessPagination(ctx, "Success to Get Board data", board, meta)
 }
+
+func (c *BoardController) GetDetail(ctx *fiber.Ctx) error {
+    publicID := ctx.Params("id")
+    
+    board, err := c.service.GetByPublicID(publicID)
+    if err != nil {
+        return utils.NotFound(ctx, "Board not found", err.Error())
+    }
+    
+    return utils.Success(ctx, "Success get board detail", board)
+}
+
+func (c *BoardController) GetBoardMembers(ctx *fiber.Ctx) error {
+    publicID := ctx.Params("id")
+    
+    members, err := c.service.GetMembers(publicID)
+    if err != nil {
+        return utils.NotFound(ctx, "Failed to get members", err.Error())
+    }
+    
+    return utils.Success(ctx, "Success get members", members)
+}
