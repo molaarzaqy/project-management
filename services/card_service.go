@@ -101,87 +101,88 @@ func (s *cardService) Create(card *models.Card, listPublicID string) error {
 }
 
 func (s *cardService) Update(card *models.Card, listPublicID string) error {
-	// ambil card dulu
-	existingCard, err := s.cardRepo.FindByPublicID(card.PublicID.String())
-	if err != nil {
-		return fmt.Errorf("card not found: %w", err)
-	}
-	// ambil list baru
-	newList, err := s.listRepo.FindByPublicID(listPublicID)
-	if err != nil {
-		return fmt.Errorf("list not found: %w", err)
-	}
-	// mulai trx
-	tx := config.DB.Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			panic(r)
-		}
-	} ()
-	// jika pindah list -> hapus dari posisi lamanya & tambah ke list baru
-	if existingCard.ListID != newList.InternalID {
-		// hapus dari list lama
-		var oldPos models.CardPosition
-		if err := tx.Where("list_internal_id = ?", existingCard.ListID).
-				  First(&oldPos).Error; err != nil {
-					filtered := make(types.UUIDArray,0,len(oldPos.CardOrder))
-					for _, id := range oldPos.CardOrder {
-						if id != existingCard.PublicID {
-							filtered = append(filtered, id)
-						}
-					}
-					// update
-					if err := tx.Model(&models.CardPosition{}).Where("internal_id = ?", oldPos.InternalID).
-							  Update("card_order", types.UUIDArray(filtered)).Error; err != nil {
-								tx.Rollback()
-								return fmt.Errorf("failed to update old card position: %w", err)
-							  }
-				  } else if !errors.Is(err, gorm.ErrRecordNotFound) {
-						tx.Rollback()
-						return fmt.Errorf("failed to get old card position: %w", err)
-				  }
-				// tambah ke list baru
-				var newPos models.CardPosition
-				res := tx.Where("list_internal_id = ?", newList.InternalID).First(&newPos)
-				if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-					newPos = models.CardPosition{
-						PublicID: uuid.New(),
-						ListID: newList.InternalID,
-						CardOrder: types.UUIDArray{existingCard.PublicID},
-					}
-					if err := tx.Create(&newPos).Error; err != nil {
-						tx.Rollback()
-						return fmt.Errorf("failed to create card position for new list: %w", err)
-					}
-				} else if res.Error == nil {
-					// append
-					updateOrder := append(newPos.CardOrder, existingCard.PublicID)
-					if err := tx.Model(&models.CardPosition{}).
-							  Where("internal_id = ?", newPos.InternalID).
-							  Update("card_order", types.UUIDArray(updateOrder)).Error; err != nil {
-								tx.Rollback()
-								return fmt.Errorf("failed to update new card position: %w", err)
-							  }
-				} else {
-					tx.Rollback()
-					return fmt.Errorf("failed to get new card position: %w", res.Error)
-				}
-	}
-	// update data card 
-	card.InternalID = existingCard.InternalID
-	card.PublicID = existingCard.PublicID
-	card.ListID = existingCard.ListID
-	if err := tx.Save(card).Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("failed to update card: %w", err)
-	}
-	// commit
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return fmt.Errorf("transaction commit failed: %w", err)
-	}
-	return nil
+    // Ambil card dulu
+    existingCard, err := s.cardRepo.FindByPublicID(card.PublicID.String())
+    if err != nil {
+        return fmt.Errorf("card not found: %w", err)
+    }
+    // Ambil list baru
+    newList, err := s.listRepo.FindByPublicID(listPublicID)
+    if err != nil {
+        return fmt.Errorf("list not found: %w", err)
+    }
+    // Mulai transaksi
+    tx := config.DB.Begin()
+    defer func() {
+        if r := recover(); r != nil {
+            tx.Rollback()
+            panic(r)
+        }
+    }()
+    // Jika pindah list -> hapus dari posisi lamanya & tambah ke list baru
+    if existingCard.ListID != newList.InternalID {
+        // Hapus dari list lama
+        var oldPos models.CardPosition
+        errOld := tx.Where("list_internal_id = ?", existingCard.ListID).First(&oldPos).Error 
+        if errOld == nil {
+            filtered := make(types.UUIDArray, 0, len(oldPos.CardOrder))
+            for _, id := range oldPos.CardOrder {
+                if id != existingCard.PublicID {
+                    filtered = append(filtered, id)
+                }
+            }
+            // Update posisi list lama
+            if err := tx.Model(&models.CardPosition{}).Where("internal_id = ?", oldPos.InternalID).
+                Update("card_order", types.UUIDArray(filtered)).Error; err != nil {
+                tx.Rollback()
+                return fmt.Errorf("failed to update old card position: %w", err)
+            }
+        } else if !errors.Is(errOld, gorm.ErrRecordNotFound) {
+            tx.Rollback()
+            return fmt.Errorf("failed to get old card position: %w", errOld)
+        }
+        // Tambah ke list baru
+        var newPos models.CardPosition
+        res := tx.Where("list_internal_id = ?", newList.InternalID).First(&newPos)
+        if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+            newPos = models.CardPosition{
+                PublicID:  uuid.New(),
+                ListID:    newList.InternalID,
+                CardOrder: types.UUIDArray{existingCard.PublicID},
+            }
+            if err := tx.Create(&newPos).Error; err != nil {
+                tx.Rollback()
+                return fmt.Errorf("failed to create card position for new list: %w", err)
+            }
+        } else if res.Error == nil {
+            updateOrder := append(newPos.CardOrder, existingCard.PublicID)
+            if err := tx.Model(&models.CardPosition{}).
+                Where("internal_id = ?", newPos.InternalID).
+                Update("card_order", types.UUIDArray(updateOrder)).Error; err != nil {
+                tx.Rollback()
+                return fmt.Errorf("failed to update new card position: %w", err)
+            }
+        } else {
+            tx.Rollback()
+            return fmt.Errorf("failed to get new card position: %w", res.Error)
+        }
+    }
+
+    // Update data card (Pastikan ListID ikut diperbarui ke newList.InternalID)
+    card.InternalID = existingCard.InternalID
+    card.PublicID = existingCard.PublicID
+    card.ListID = newList.InternalID
+
+    if err := tx.Save(card).Error; err != nil {
+        tx.Rollback()
+        return fmt.Errorf("failed to update card: %w", err)
+    }
+    // Commit transaksi
+    if err := tx.Commit().Error; err != nil {
+        tx.Rollback()
+        return fmt.Errorf("transaction commit failed: %w", err)
+    }
+    return nil
 }
 
 func (s *cardService) Delete(id uint) error {
@@ -189,26 +190,28 @@ func (s *cardService) Delete(id uint) error {
 }
 
 func (s *cardService) GetByListID(listPublicID string) ([]models.Card, error) {
-	// verif kalau listnya ada 
-	list, err := s.listRepo.FindByPublicID(listPublicID)
-	if err != nil {
-		return nil, fmt.Errorf("list not found: %w", err)
-	}
-	// kalau list nya ada, ambil card positionnya 
-	position, err := s.cardRepo.FindCardPositionByListID(list.InternalID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get card position: %w", err)
-	}
-	// ambil semua card di list tersebut
-	cards, err := s.cardRepo.FindByListID(listPublicID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get cards: %w", err)
-	}
-	// sorting
-	if position != nil && len(position.CardOrder) > 0 {
-		cards = sortCardByPosition(cards, position.CardOrder)
-	}
-	return cards, nil
+    // Verifikasi kalau list-nya ada 
+    list, err := s.listRepo.FindByPublicID(listPublicID)
+    if err != nil {
+        return nil, fmt.Errorf("list not found: %w", err)
+    }
+    // Ambil semua card di list tersebut terlebih dahulu
+    cards, err := s.cardRepo.FindByListID(listPublicID)
+    if err != nil {
+        return nil, fmt.Errorf("failed to get cards: %w", err)
+    }
+    // Ambil card position-nya 
+    position, err := s.cardRepo.FindCardPositionByListID(list.InternalID)
+    if err != nil {
+        if !errors.Is(err, gorm.ErrRecordNotFound) {
+            return nil, fmt.Errorf("failed to get card position: %w", err)
+        }
+    }
+    // Sorting jika position-nya ada dan tidak kosong
+    if position != nil && len(position.CardOrder) > 0 {
+        cards = sortCardByPosition(cards, position.CardOrder)
+    }
+    return cards, nil
 }
 
 func sortCardByPosition(cards []models.Card, order []uuid.UUID) []models.Card {
