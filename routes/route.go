@@ -22,8 +22,8 @@ func Setup(
 	if err != nil {
 		log.Fatal("error loading .env file")
 	} 
-	app.Post("/v1/auth/register", uc.Register)
-	app.Post("/v1/auth/login", uc.Login)
+	app.Post("/api/v1/auth/register", uc.Register)
+	app.Post("/api/v1/auth/login", uc.Login)
 
 	// protected routes
 	api := app.Group("/api/v1", jwtware.New(jwtware.Config{

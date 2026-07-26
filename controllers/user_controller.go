@@ -32,7 +32,17 @@ func (c *UserController) Register(ctx *fiber.Ctx) error {
 	_ = copier.Copy(&userResp, &user)
 	return utils.Success(ctx, "register success", userResp)
 }
-
+// Login godoc
+// @Summary User login
+// @Description Masuk ke dalam sistem menggunakan email dan password
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body object{email=string,password=string} true "Credentials"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/auth/login [post]
 func (c *UserController) Login(ctx *fiber.Ctx) error {
 	var body struct {
 		Email string `json:"email"`
