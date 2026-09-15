@@ -1,9 +1,9 @@
 package repositories
 
 import (
-	"github.com/MaulanaBarzaqi/project-management/config"
 	"github.com/MaulanaBarzaqi/project-management/models"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type ListPositionRepository interface {
@@ -14,22 +14,23 @@ type ListPositionRepository interface {
 }
 
 type listPositionRepository struct {
+	DB *gorm.DB
 }
 
-func NewListPositionRepository() ListPositionRepository {
-	return &listPositionRepository{}
+func NewListPositionRepository(db *gorm.DB) ListPositionRepository {
+	return &listPositionRepository{DB: db}
 }
 
 func (r *listPositionRepository) GetByBoard(boardPublicID string) (*models.ListPosition, error) {
 	var position models.ListPosition
-	err := config.DB.Joins("JOIN boards ON boards.internal_id = list_positions.board_internal_id").
+	err := r.DB.Joins("JOIN boards ON boards.internal_id = list_positions.board_internal_id").
 	Where("boards.public_id = ?", boardPublicID).First(&position).Error
 
 	return  &position, err
 }
 
 func (r *listPositionRepository) CreateOrUpdate(boardPublicID string, listOrder []uuid.UUID) error {
-	return config.DB.Exec(`
+	return r.DB.Exec(`
 	INSERT INTO list_positions (board_internal_id, list_order) 
 	SELECT internal_id, ? FROM boards Where public_id = ? 
 	ON CONFLICT (board_internal_id)
@@ -45,7 +46,7 @@ func (r *listPositionRepository) GetListOrder(boardPublicID string) ([]uuid.UUID
 }
 
 func (r *listPositionRepository) UpdateListOrder(position *models.ListPosition) error {
-	return config.DB.Model(position).
+	return r.DB.Model(position).
 	Where("internal_id = ?", position.InternalID).
 	Update("list_order", position.ListOrder).Error
 }
