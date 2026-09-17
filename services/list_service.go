@@ -14,14 +14,13 @@ import (
 )
 
 type ListService interface {
-	GetByBoardID(boardPublicID string) (*ListWithOrder, error)
+	GetByBoardPublicID(boardPublicID string) (*ListWithOrder, error)
 	GetByID(id uint) (*models.List, error)
 	GetByPublicID(publicID string) (*models.List, error)
 	Create(list *models.List) error
 	Update(list *models.List) error
 	Delete(id uint) error
 	UpdatePositions(boardPublicID string, positions []uuid.UUID) error
-	UpdateCardPositions(listPublicID string, positions []uuid.UUID) error
 }
 
 type ListWithOrder struct {
@@ -40,10 +39,14 @@ func NewListService(
 	listPosRepo repositories.ListPositionRepository, 
 	boardRepo repositories.BoardRepository,
 ) ListService {
-	return &listService{listRepo, listPosRepo, boardRepo}
+	return &listService{
+		listRepo: listRepo,
+		listPosRepo: listPosRepo,
+		boardRepo: boardRepo,
+	}
 }
 
-func (s *listService) GetByBoardID(boardPublicID string) (*ListWithOrder, error) {
+func (s *listService) GetByBoardPublicID(boardPublicID string) (*ListWithOrder, error) {
 	// verivikasi board
 	_, err := s.boardRepo.FindByPublicID(boardPublicID)
 	if err != nil {
@@ -158,13 +161,4 @@ func (s *listService) UpdatePositions(boardPublicID string, positions []uuid.UUI
 	// update list order
 	position.ListOrder = positions
 	return s.listPosRepo.UpdateListOrder(position)
-}
-
-func (s *listService) UpdateCardPositions(listPublicID string, positions []uuid.UUID) error {
-	list, err := s.listRepo.FindByPublicID(listPublicID)
-	if err != nil {
-		return errors.New("list not found")
-	}
-	cardOrder := types.UUIDArray(positions)
-	return s.listRepo.UpdateCardOrder(int64(list.InternalID), cardOrder)
 }

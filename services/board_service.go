@@ -9,12 +9,20 @@ import (
 )
 
 type BoardService interface {
+	GetAll() ([]models.Board, error)
+	GetAllByUser(userPublicID string) ([]models.Board, error)
+	GetByID(id uint) (*models.Board, error)
 	Create(board *models.Board) error
-	Update(board *models.Board) error 
+	Update(board *models.Board) error
+	Delete(id uint) error
 	GetByPublicID(publicID string) (*models.Board, error)
+	AddMember(boardPublicID, userPublicID string) error
 	AddMembers(boardPublicID string, userPublicIDS []string) error
+	RemoveMember(boardPublicID, userPublicID string) error
 	RemoveMembers(boardPublicID string, userPublicIDs []string) error
-	GetAllByUserPaginate(userID, filter, sort string, limit, offset int) ([]models.Board, int64, error)
+	IsMember(boardPublicID, userPublicID string) (bool, error)
+	GetAllByUserPaginate(userPublicID, filter, sort string, limit, offset int) ([]models.Board, int64, error)
+	GetAllPaginate(filter, sort string, limit, offset int) ([]models.Board, int64, error)
 	GetMembers(boardPublicID string) ([]models.User, error)
 }
 
@@ -25,12 +33,29 @@ type boardService struct {
 }
 
 func NewBoardService(
-	boardRepo repositories.BoardRepository, 
-	userRepo repositories.UserRepository,
-	boardMemberRepo repositories.BoardMemberRepository,
+		boardRepo repositories.BoardRepository, 
+		userRepo repositories.UserRepository,
+		boardMemberRepo repositories.BoardMemberRepository,
 	) BoardService {
-	return &boardService{boardRepo,userRepo, boardMemberRepo}
+		return &boardService{
+			boardRepo: boardRepo,
+			userRepo: userRepo,
+			boardMemberRepo: boardMemberRepo,
+		}
 }
+
+func (s *boardService) GetAll() ([]models.Board, error) {
+	return s.boardRepo.FindAll()
+}
+
+func (s *boardService) GetAllByUser(userPublicID string) ([]models.Board, error) {
+	return s.boardRepo.FindAllByUser(userPublicID)
+}
+
+func (s *boardService) GetByID(id uint) (*models.Board, error) {
+	return s.boardRepo.FindByID(id)
+} 
+
 
 func (s *boardService) Create(board *models.Board) error {
 	user, err := s.userRepo.FindByPublicID(board.OwnerPublicID.String())
@@ -46,8 +71,26 @@ func (s *boardService) Update(board *models.Board) error {
 	return s.boardRepo.Update(board)
 }
 
+func (s *boardService) Delete(id uint) error {
+	return s.boardRepo.Delete(id)
+}
+
 func (s *boardService) GetByPublicID(publicID string) (*models.Board, error) {
 	return s.boardRepo.FindByPublicID(publicID)
+}
+
+func (s *boardService) AddMember(boardPublicID, userPublicID string) error {
+	board, err := s.boardRepo.FindByPublicID(boardPublicID)
+	if err != nil {
+		return errors.New("board not found")
+	}
+
+	user, err := s.userRepo.FindByPublicID(userPublicID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	return s.boardRepo.AddMember(uint(board.InternalID), uint(user.InternalID))
 }
 
 func (s *boardService) AddMembers(boardPublicID string, userPublicIDS []string) error {
@@ -82,7 +125,21 @@ func (s *boardService) AddMembers(boardPublicID string, userPublicIDS []string) 
 	if len(newMemberIDs) == 0 {
 		return  nil
 	}
-	return s.boardRepo.AddMember(uint(board.InternalID), newMemberIDs)
+	return s.boardRepo.AddMembers(uint(board.InternalID), newMemberIDs)
+}
+
+func (s *boardService) RemoveMember(boardPublicID, userPublicID string) error {
+	board, err := s.boardRepo.FindByPublicID(boardPublicID)
+	if err != nil {
+		return errors.New("board not found")
+	}
+
+	user, err := s.userRepo.FindByPublicID(userPublicID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	return s.boardRepo.RemoveMember(uint(board.InternalID), uint(user.InternalID))
 }
 
 func (s *boardService) RemoveMembers(boardPublicID string, userPublicIDs []string) error {
@@ -114,11 +171,29 @@ func (s *boardService) RemoveMembers(boardPublicID string, userPublicIDs []strin
 			membersToRemove = append(membersToRemove, userID)
 		}
 	}
-	return s.boardRepo.RemoveMember(uint(board.InternalID), membersToRemove)
+	return s.boardRepo.RemoveMembers(uint(board.InternalID), membersToRemove)
 }
 
-func (s *boardService) GetAllByUserPaginate(userID, filter, sort string, limit, offset int) ([]models.Board, int64, error) {
-	return s.boardRepo.FindAllUserPaginate(userID, filter, sort, limit, offset)
+func (s *boardService) IsMember(boardPublicID, userPublicID string) (bool, error) {
+	board, err := s.boardRepo.FindByPublicID(boardPublicID)
+	if err != nil {
+		return false, errors.New("board not found")
+	}
+
+	user, err := s.userRepo.FindByPublicID(userPublicID)
+	if err != nil {
+		return false, errors.New("user not found")
+	}
+
+	return s.boardMemberRepo.IsMember(string(board.InternalID), string(user.InternalID))
+}
+
+func (s *boardService) GetAllByUserPaginate(userPublicID, filter, sort string, limit, offset int) ([]models.Board, int64, error) {
+	return s.boardRepo.FindAllByUserPaginate(userPublicID, filter, sort, limit, offset)
+}
+
+func (s *boardService) GetAllPaginate(filter, sort string, limit, offset int) ([]models.Board, int64, error) {
+	return s.boardRepo.FindAllPaginate(filter, sort, limit, offset)
 }
 
 func (s *boardService) GetMembers(boardPublicID string) ([]models.User, error) {

@@ -14,7 +14,9 @@ type UserService interface {
 	Login(email, password string) (*models.User, error)
 	GetByID(id uint) (*models.User, error)
 	GetByPublicID(id string) (*models.User, error)
+	GetAll() ([]models.User, error)
 	GetAllPagination(filter, sort string, limit, offset int) ([]models.User, int64, error)
+	Create(user *models.User) error
 	Update(user *models.User) error
 	Delete(id uint) error
 }
@@ -66,8 +68,21 @@ func (s *userService) GetByPublicID(id string) (*models.User, error) {
 	return s.repo.FindByPublicID(id)
 }
 
+func (s *userService) GetAll() ([]models.User, error) {
+	return s.repo.FindAll()
+}
+
 func (s *userService) GetAllPagination(filter, sort string, limit, offset int) ([]models.User, int64, error) {
 	return s.repo.FindAllPagination(filter, sort, limit, offset)
+}
+
+func (s *userService) Create(user *models.User) error {
+	hashed, err := utils.HashPassword(user.Password)
+	if err != nil {
+		return err
+	}
+	user.Password = hashed
+	return s.repo.Create(user)
 }
 
 func (s *userService) Update(user *models.User) error {

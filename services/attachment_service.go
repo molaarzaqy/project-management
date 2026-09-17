@@ -10,35 +10,54 @@ import (
 )
 
 type AttachmentService interface {
-	GetByPublicID(pubID uuid.UUID) (*models.CardAttachment, error)
-	Create(cardPublidID, userPublicID, fileName string) (*models.CardAttachment, error)
-	DeleteByPublicID(pubID uuid.UUID) error
+	GetByCardPublicID(cardPublicID string) ([]models.CardAttachment, error)
+	GetByPublicID(publicID uuid.UUID) (*models.CardAttachment, error)
+	GetByID(id uint) (*models.CardAttachment, error)
+	Create(cardPublicID, userPublicID, fileName string) (*models.CardAttachment, error)
+	DeleteByPublicID(publicID uuid.UUID) error
+	Delete(id uint) error
 }
 
 type attachmentService struct {
-	attactmentRepo repositories.AttachmentRepository
+	attachmentRepo repositories.AttachmentRepository
 	cardRepo repositories.CardRepository
 	userRepo repositories.UserRepository
 }
 
 func NewAttachmentService(
-	attactmentRepo repositories.AttachmentRepository,
-	cardRepo repositories.CardRepository,
-	userRepo repositories.UserRepository,
+		attachmentRepo repositories.AttachmentRepository,
+		cardRepo repositories.CardRepository,
+		userRepo repositories.UserRepository,
 	) AttachmentService {
 		return &attachmentService{
-			attactmentRepo: attactmentRepo,
+			attachmentRepo: attachmentRepo,
 			cardRepo: cardRepo,
 			userRepo: userRepo,
 		}
-	}
-
-func (s *attachmentService) GetByPublicID(pubID uuid.UUID) (*models.CardAttachment, error) {
-	return s.attactmentRepo.GetByPublicID(pubID)
 }
 
-func (s *attachmentService) Create(cardPublidID, userPublicID, fileName string) (*models.CardAttachment, error) {
-	card, err := s.cardRepo.FindByPublicID(cardPublidID)
+func (s *attachmentService) GetByCardPublicID(cardPublicID string) ([]models.CardAttachment, error) {
+	_, err := s.cardRepo.FindByPublicID(cardPublicID)
+	if err != nil {
+		return nil, errors.New("card not found")
+	}
+	return s.attachmentRepo.FindByCardPublicID(cardPublicID)
+}
+
+func (s *attachmentService) GetByPublicID(publicID uuid.UUID) (*models.CardAttachment, error) {
+	return s.attachmentRepo.FindByPublicID(publicID)
+}
+
+func (s *attachmentService) GetByID(id uint) (*models.CardAttachment, error) {
+	return s.attachmentRepo.FindByID(id)
+}
+
+func (s *attachmentService) Delete(id uint) error {
+	return s.attachmentRepo.Delete(id)
+}
+
+func (s *attachmentService) Create(cardPublicID, userPublicID, fileName string) (*models.CardAttachment, error) {
+	card, err := s.cardRepo.FindByPublicID(cardPublicID)
 	if err != nil {
 		return nil, errors.New("card not found")
 	} 
@@ -53,12 +72,12 @@ func (s *attachmentService) Create(cardPublidID, userPublicID, fileName string) 
 		File: fileName,
 		CreatedAt: time.Now(),
 	}
-	if err := s.attactmentRepo.Create(attach); err != nil {
+	if err := s.attachmentRepo.Create(attach); err != nil {
 		return nil, err
 	}
 	return attach, nil
 }
 
-func (s *attachmentService) DeleteByPublicID(pubID uuid.UUID) error {
-	return s.attactmentRepo.DeleteByPublicID(pubID)
+func (s *attachmentService) DeleteByPublicID(publicID uuid.UUID) error {
+	return s.attachmentRepo.DeleteByPublicID(publicID)
 }
