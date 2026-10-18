@@ -83,6 +83,35 @@ func (c *UserController) GetUser(ctx *fiber.Ctx) error {
 	return utils.Success(ctx, "user found", userResp)
 }
 
+func (c *UserController) GetUsers(ctx *fiber.Ctx) error {
+	users, err := c.service.GetAll()
+	if err != nil {
+		return utils.InternalServerError(ctx, "Gagal Mengambil Data", err.Error()) //err 500
+	}
+
+	var userResp []models.UserResponse
+	err = copier.Copy(&userResp, &users)
+	if err != nil {
+		return utils.InternalServerError(ctx, "Internal Server Error", err.Error())
+	}
+
+	return utils.Success(ctx, "Data pengguna berhasil diambil", userResp)
+}
+
+func (c *UserController) CreateUser(ctx *fiber.Ctx) error {
+	user := new(models.User)
+	if err := ctx.BodyParser(user); err != nil {
+		return utils.BadRequest(ctx, "Gagal Mengambil Data", err.Error())
+	}
+	if err := c.service.Register(user); err != nil {
+		return utils.BadRequest(ctx, "Registrasi Gagal ", err.Error())
+	}
+	var userResp models.UserResponse
+	_ = copier.Copy(&userResp, &user)
+	return utils.Success(ctx, "Berhasil membuat user", userResp)
+
+}
+
 func (c *UserController) GetUserPagination(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
